@@ -70,7 +70,6 @@ export const metadata: Metadata = {
     shortcut: "/favicon.ico",
     apple: "/favicon.ico",
   },
-  manifest: "/manifest.webmanifest",
   robots: {
     index: true,
     follow: true,
