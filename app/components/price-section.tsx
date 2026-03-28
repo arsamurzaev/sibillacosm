@@ -1,115 +1,118 @@
 "use client";
 
-import { ChevronDown, ShieldCheck } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import type { City, PriceSection as PriceSectionType } from "../data";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import type { PriceSection as PriceSectionType } from "@/lib/types";
+import { ShieldCheck } from "lucide-react";
 import { PriceRow } from "./price-row";
+import { PublicEditLink } from "./public-edit-link";
 
 interface PriceSectionProps {
   section: PriceSectionType;
-  city: City;
   selectedIds: Set<string>;
   onToggle: (id: string) => void;
   sectionIndex: number;
+  adminEditMode?: boolean;
+  onEditSection?: () => void;
+  onEditItem?: (itemId: string) => void;
 }
 
 export function PriceSection({
   section,
-  city,
   selectedIds,
   onToggle,
   sectionIndex,
+  adminEditMode = false,
+  onEditSection,
+  onEditItem,
 }: PriceSectionProps) {
-  const [open, setOpen] = useState(true);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | undefined>(undefined);
-
-  const selectedCount = section.items.filter((i) =>
-    selectedIds.has(i.id),
+  const selectedCount = section.items.filter((item) =>
+    selectedIds.has(item.id),
   ).length;
 
-  useEffect(() => {
-    if (contentRef.current) {
-      setHeight(contentRef.current.scrollHeight);
-    }
-  }, [section.items, city]);
-
   return (
-    <section
+    <Accordion
+      type="single"
+      collapsible
+      defaultValue={section.id}
       className="animate-fade-in-up"
-      style={{ animationDelay: `${sectionIndex * 100}ms` }}
+      style={{ animationDelay: `${sectionIndex * 80}ms` }}
     >
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="
-          sticky top-0 z-30
-          w-full flex items-center justify-between gap-3 md:gap-4
-          px-4 md:px-5 py-4 md:py-5
-          bg-background/95 supports-[backdrop-filter]:bg-background/80 backdrop-blur-sm
-          border-t border-border/70
-          group cursor-pointer
-        "
-        aria-expanded={open}
+      <AccordionItem
+        value={section.id}
+        id={`section-${section.id}`}
+        className="overflow-hidden rounded-[28px] border border-border bg-card shadow-[0_14px_40px_rgba(26,22,20,0.04)]"
       >
-        <div className="flex items-center gap-3 min-w-0">
-          <h3 className="text-left font-serif text-2xl md:text-3xl font-semibold text-primary leading-snug tracking-tight text-balance break-words [overflow-wrap:anywhere]">
-            {section.title}
-          </h3>
-          {selectedCount > 0 && (
-            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground text-[11px] font-semibold flex items-center justify-center">
-              {selectedCount}
-            </span>
-          )}
-        </div>
-        <ChevronDown
-          className={`flex-shrink-0 w-5 h-5 text-muted-foreground transition-transform duration-300 ${open ? "rotate-180" : "rotate-0"}`}
-          strokeWidth={1.5}
-        />
-      </button>
-
-      <div
-        className="overflow-hidden transition-all duration-400 ease-out"
-        style={{
-          maxHeight: open ? (height ?? 2000) : 0,
-          opacity: open ? 1 : 0,
-        }}
-      >
-        <div ref={contentRef} className="pb-3 px-1">
-          {/* Subtitle */}
-          {section.subtitle && (
-            <p className="px-4 md:px-5 pb-3 text-[12px] text-muted-foreground tracking-wide break-words [overflow-wrap:anywhere]">
-              {section.subtitle}
-            </p>
-          )}
-
-          {/* Guarantee */}
-          {section.guarantee && (
-            <div className="mx-4 md:mx-5 mb-4 px-4 py-3 rounded-xl bg-primary/[0.04] border border-primary/10">
-              <div className="flex gap-2.5 items-start">
-                <ShieldCheck
-                  className="w-4 h-4 text-primary flex-shrink-0 mt-0.5"
-                  strokeWidth={1.5}
-                />
-                <p className="text-[12px] text-foreground/70 leading-relaxed break-words [overflow-wrap:anywhere]">
-                  {section.guarantee}
-                </p>
-              </div>
+        <div className="flex items-start justify-between gap-3 px-5 py-5 md:px-6 md:py-6">
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-3">
+              <h2 className="truncate font-serif text-3xl leading-none tracking-tight text-primary md:text-4xl">
+                {section.title}
+              </h2>
+              {selectedCount > 0 ? (
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
+                  {selectedCount}
+                </span>
+              ) : null}
             </div>
-          )}
+          </div>
 
-          {section.items.map((item, i) => (
-            <PriceRow
-              key={item.id}
-              item={item}
-              city={city}
-              selected={selectedIds.has(item.id)}
-              onToggle={onToggle}
-              index={i}
-            />
-          ))}
+          <div className="flex shrink-0 items-center gap-2 pt-0.5">
+            {adminEditMode && onEditSection ? (
+              <PublicEditLink
+                onClick={onEditSection}
+                label={`Редактировать раздел ${section.title}`}
+              />
+            ) : null}
+
+            <AccordionTrigger className="!flex-none !items-center !justify-center !gap-0 !py-0 h-10 w-10 rounded-full border border-border bg-background text-muted-foreground no-underline shadow-[0_10px_24px_rgba(26,22,20,0.05)] transition-all duration-300 hover:border-primary/25 hover:bg-card hover:text-primary hover:no-underline [&>svg]:h-4 [&>svg]:w-4 [&>svg]:translate-y-0 [&>svg]:text-current">
+              <span className="sr-only">{`Переключить раздел ${section.title}`}</span>
+            </AccordionTrigger>
+          </div>
         </div>
-      </div>
-    </section>
+
+        <AccordionContent className="pb-0">
+          <div className="px-3 pb-4 md:px-4 md:pb-5">
+            {section.subtitle ? (
+              <p className="px-2 pb-4 text-sm leading-7 text-muted-foreground md:px-3">
+                {section.subtitle}
+              </p>
+            ) : null}
+
+            {section.guarantee ? (
+              <div className="mx-2 mb-5 rounded-[22px] border border-primary/12 bg-primary/[0.04] px-4 py-4 md:mx-3">
+                <div className="flex items-start gap-3">
+                  <ShieldCheck
+                    className="mt-0.5 h-4 w-4 shrink-0 text-primary"
+                    strokeWidth={1.8}
+                  />
+                  <p className="text-sm leading-7 text-foreground/72">
+                    {section.guarantee}
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="space-y-3.5">
+              {section.items.map((item, index) => (
+                <PriceRow
+                  key={item.id}
+                  item={item}
+                  selected={selectedIds.has(item.id)}
+                  onToggle={onToggle}
+                  index={index}
+                  adminEditMode={adminEditMode}
+                  onEdit={onEditItem ? () => onEditItem(item.id) : undefined}
+                />
+              ))}
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
   );
 }

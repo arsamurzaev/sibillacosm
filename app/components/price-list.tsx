@@ -1,51 +1,161 @@
 "use client";
 
-import { ArrowLeftRight, MapPin, MessageCircle } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import type { CityWithSections } from "@/lib/types";
+import { pricePageQueryKey } from "@/lib/query-keys";
+import { ArrowLeft, MessageCircle, Plus } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
-import { cityInfo, sections, type City } from "../data";
-import { CitySelector } from "./city-selector";
+import { useEffect, useMemo, useState } from "react";
+import { AdminExitButton } from "./admin-exit-button";
 import { PriceSection } from "./price-section";
-import { TrainingsSection } from "./trainings-section";
+import { PriceAdminDrawer, type PriceDrawerState } from "./price-admin-drawer";
+import { PublicEditLink } from "./public-edit-link";
 
-function buildWhatsAppMessage(selectedIds: Set<string>, city: City): string {
-  const lines: string[] = ["Здравствуйте!\n\nХочу записаться на процедуры:\n"];
+function getPriceDrawerStorageKey(citySlug: string) {
+  return `price-admin-drawer:${citySlug}`;
+}
 
-  for (const section of sections) {
-    const picked = section.items.filter((i) => selectedIds.has(i.id));
-    if (picked.length === 0) continue;
+function readStoredPriceDrawerState(citySlug: string): PriceDrawerState {
+  if (typeof window === "undefined") return null;
 
-    lines.push(`\n${section.title}:`);
-    for (const item of picked) {
-      const price = item.prices[city];
-      const dose = item.dose ? ` (${item.dose})` : "";
-      const priceStr =
-        price > 0 ? `${price.toLocaleString("ru-RU")} \u20BD` : "уточнить";
-      lines.push(`  \u2014 ${item.name}${dose} \u2014 ${priceStr}`);
+  try {
+    const rawValue = window.sessionStorage.getItem(getPriceDrawerStorageKey(citySlug));
+    if (!rawValue) return null;
+
+    const parsed = JSON.parse(rawValue) as PriceDrawerState;
+    if (!parsed || typeof parsed !== "object" || !("type" in parsed)) {
+      return null;
     }
+
+    if (parsed.type === "city" || parsed.type === "addSection") {
+      return parsed;
+    }
+
+    if (
+      parsed.type === "section" &&
+      typeof parsed.sectionId === "string"
+    ) {
+      return parsed;
+    }
+
+    if (
+      parsed.type === "item" &&
+      typeof parsed.sectionId === "string" &&
+      typeof parsed.itemId === "string"
+    ) {
+      return parsed;
+    }
+  } catch (error) {
+    console.error(error);
   }
 
-  lines.push("\n\nПодскажите, пожалуйста, ближайшие свободные даты/время");
+  return null;
+}
+
+function isValidPriceDrawerState(city: CityWithSections, state: PriceDrawerState) {
+  if (!state) return true;
+  if (state.type === "city" || state.type === "addSection") return true;
+
+  const section = city.sections.find((entry) => entry.id === state.sectionId);
+  if (!section) return false;
+
+  if (state.type === "section") return true;
+
+  return section.items.some((item) => item.id === state.itemId);
+}
+
+interface PriceListProps {
+  city: CityWithSections;
+  adminLoggedIn?: boolean;
+  adminEditMode?: boolean;
+}
+
+async function fetchPricePage(citySlug: string) {
+  const response = await fetch(`/api/prices/${citySlug}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error("Не удалось обновить данные прайса.");
+  }
+
+  return (await response.json()) as CityWithSections;
+}
+
+function buildWhatsAppMessage(selectedIds: Set<string>, city: CityWithSections): string {
+  const lines: string[] = [
+    "Здравствуйте!",
+    "",
+    `Хочу записаться на процедуры в городе ${city.title}:`,
+    "",
+  ];
+
+  for (const section of city.sections) {
+    const picked = section.items.filter((item) => selectedIds.has(item.id));
+
+    if (picked.length === 0) continue;
+
+    lines.push(`${section.title}:`);
+
+    for (const item of picked) {
+      const secondary = item.secondaryLine ? ` (${item.secondaryLine})` : "";
+      const price = item.price > 0 ? `${item.price.toLocaleString("ru-RU")} ₽` : "уточнить";
+      lines.push(`- ${item.name}${secondary} - ${price}`);
+    }
+
+    lines.push("");
+  }
+
+  lines.push("Подскажите, пожалуйста, ближайшие свободные даты и время.");
+
   return lines.join("\n");
 }
 
-function calcTotal(selectedIds: Set<string>, city: City): number {
-  let total = 0;
-  for (const section of sections) {
-    for (const item of section.items) {
-      if (selectedIds.has(item.id)) {
-        total += item.prices[city];
-      }
-    }
-  }
-  return total;
+function calcTotal(selectedIds: Set<string>, city: CityWithSections) {
+  return city.sections.reduce((total, section) => {
+    const sectionTotal = section.items.reduce((sum, item) => {
+      if (!selectedIds.has(item.id)) return sum;
+      return sum + item.price;
+    }, 0);
+
+    return total + sectionTotal;
+  }, 0);
 }
 
-export function PriceList() {
-  const [city, setCity] = useState<City | null>(null);
+export function PriceList({
+  city,
+  adminLoggedIn = false,
+  adminEditMode = false,
+}: PriceListProps) {
+  const { data: pricePage = city } = useQuery({
+    queryKey: pricePageQueryKey(city.slug),
+    queryFn: () => fetchPricePage(city.slug),
+    initialData: city,
+    enabled: adminEditMode,
+  });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [drawerState, setDrawerState] = useState<PriceDrawerState>(() =>
+    adminEditMode ? readStoredPriceDrawerState(city.slug) : null,
+  );
+  const effectiveDrawerState = useMemo(
+    () => (isValidPriceDrawerState(pricePage, drawerState) ? drawerState : null),
+    [pricePage, drawerState],
+  );
 
-  const toggle = useCallback((id: string) => {
+  useEffect(() => {
+    if (typeof window === "undefined" || !adminEditMode) return;
+
+    const storageKey = getPriceDrawerStorageKey(city.slug);
+
+    if (effectiveDrawerState) {
+      window.sessionStorage.setItem(storageKey, JSON.stringify(effectiveDrawerState));
+      return;
+    }
+
+    window.sessionStorage.removeItem(storageKey);
+  }, [adminEditMode, city.slug, effectiveDrawerState]);
+
+  const toggle = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) {
@@ -55,177 +165,129 @@ export function PriceList() {
       }
       return next;
     });
-  }, []);
+  };
 
-  const handleCitySelect = useCallback((c: City) => {
-    setCity(c);
-    setSelectedIds(new Set());
-  }, []);
-
+  const total = useMemo(() => calcTotal(selectedIds, pricePage), [pricePage, selectedIds]);
   const hasSelection = selectedIds.size > 0;
 
   const whatsappUrl = useMemo(() => {
-    if (!hasSelection || !city) return "";
-    const info = cityInfo[city];
-    const msg = buildWhatsAppMessage(selectedIds, city);
-    return `https://wa.me/${info.whatsapp}?text=${encodeURIComponent(msg)}`;
-  }, [selectedIds, hasSelection, city]);
-
-  const total = useMemo(() => {
-    if (!city) return 0;
-    return calcTotal(selectedIds, city);
-  }, [selectedIds, city]);
-
-  // City selector screen
-  if (!city) {
-    return <CitySelector onSelect={handleCitySelect} />;
-  }
-
-  const info = cityInfo[city];
+    if (!hasSelection) return "";
+    return `https://wa.me/${pricePage.whatsapp}?text=${encodeURIComponent(
+      buildWhatsAppMessage(selectedIds, pricePage),
+    )}`;
+  }, [hasSelection, pricePage, selectedIds]);
 
   return (
-    <div className="relative min-h-screen flex flex-col items-center bg-background">
-      {/* Decorative top line */}
-      <div className="w-full h-px bg-accent/30" />
-
-      <div className="w-full max-w-[620px] mx-auto px-4 md:px-6 pt-10 md:pt-12 pb-32 md:pb-36">
-        {/* Header */}
-        <header className="mb-11 md:mb-12 animate-fade-in-up">
-          <div className="flex items-center gap-3 mb-7">
-            <div className="h-px flex-1 bg-border" />
-            <button
-              type="button"
-              onClick={() => setCity(null)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-border hover:border-primary/30 transition-all duration-300 cursor-pointer group"
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-[720px] px-4 pb-32 pt-10 md:px-6 md:pb-36 md:pt-12">
+        <header className="rounded-[30px] border border-border bg-card px-5 py-6 shadow-[0_14px_40px_rgba(26,22,20,0.05)] md:px-7 md:py-8">
+          <div className="flex items-center justify-between gap-4">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground transition-colors duration-300 hover:border-primary/30 hover:text-primary"
             >
-              <MapPin
-                className="w-3 h-3 text-muted-foreground group-hover:text-primary transition-colors duration-300"
-                strokeWidth={1.5}
-              />
-              <span className="text-[10px] tracking-[0.25em] uppercase text-muted-foreground group-hover:text-primary transition-colors duration-300 font-medium">
-                {info.label}
+              <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.8} />
+              Назад
+            </Link>
+
+            <div className="flex items-center gap-2.5">
+              <span className="text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
+                {pricePage.title}
               </span>
-              <ArrowLeftRight
-                className="w-3 h-3 text-muted-foreground/50 group-hover:text-primary/50 transition-colors duration-300"
-                strokeWidth={1.5}
-              />
-            </button>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <h1 className="font-serif inline text-6xl md:text-7xl font-light text-foreground leading-none tracking-tight">
-            {"Price"}
-          </h1>
-          <h1 className="font-serif inline text-6xl md:text-7xl font-light text-foreground leading-none tracking-tight -mt-1">
-            <span className="italic text-primary">{"list"}</span>
-          </h1>
-
-          <div className="mt-8 md:mt-9 flex items-center gap-4">
-            <div className="px-5 py-2.5 border border-foreground/10 rounded-full">
-              <Link
-                href={`https://www.instagram.com/${info.instagram}`}
-                target="__blank"
-              >
-                <span className="text-[11px] tracking-[0.25em] uppercase text-foreground/70 font-medium">
-                  {"@"}
-                  {info.instagram}
-                </span>
-              </Link>
+              {adminEditMode ? (
+                <>
+                  <PublicEditLink
+                    onClick={() => setDrawerState({ type: "city" })}
+                    label="Настроить город"
+                  />
+                  <PublicEditLink
+                    onClick={() => setDrawerState({ type: "addSection" })}
+                    label="Добавить раздел"
+                    icon={<Plus className="h-4 w-4" strokeWidth={1.8} />}
+                  />
+                  <AdminExitButton />
+                </>
+              ) : null}
             </div>
-            <div className="h-px flex-1 bg-border" />
           </div>
 
-          <p className="mt-6 text-[13px] text-muted-foreground leading-relaxed max-w-[360px] break-words [overflow-wrap:anywhere]">
-            {
-              "Выберите интересующие процедуры, чтобы записаться на консультацию через WhatsApp"
-            }
+          <h1 className="mt-6 font-serif text-5xl leading-none tracking-tight md:text-6xl">
+            Прайс
+          </h1>
+          <p className="mt-5 max-w-[520px] text-sm leading-7 text-foreground/72 md:text-[15px]">
+            Выберите интересующие процедуры, чтобы сразу отправить заявку в WhatsApp.
+            Дополнительные материалы по процедурам открываются прямо внутри карточек.
           </p>
+
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <a
+              href={`https://wa.me/${pricePage.whatsapp}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-border px-4 py-2 text-sm text-foreground/75 transition-colors duration-300 hover:border-primary/30 hover:text-primary"
+            >
+              {pricePage.whatsappDisplay}
+            </a>
+            <a
+              href={`https://instagram.com/${pricePage.instagram}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border border-border px-4 py-2 text-sm text-foreground/75 transition-colors duration-300 hover:border-primary/30 hover:text-primary"
+            >
+              @{pricePage.instagram}
+            </a>
+            <Link
+              href="/training"
+              className="rounded-full border border-border px-4 py-2 text-sm text-foreground/75 transition-colors duration-300 hover:border-primary/30 hover:text-primary"
+            >
+              Обучение
+            </Link>
+          </div>
         </header>
 
-        {/* Sections */}
-        <main className="flex flex-col">
-          {sections.map((s, i) => (
-            <div key={s.key}>
-              <PriceSection
-                section={s}
-                city={city}
-                selectedIds={selectedIds}
-                onToggle={toggle}
-                sectionIndex={i}
-              />
-              {i < sections.length - 1 && (
-                <div className="mx-4 md:mx-5 h-px bg-border" />
-              )}
+        <section className="mt-8 flex flex-col gap-5">
+          {pricePage.sections.length === 0 ? (
+            <div className="rounded-[28px] border border-border bg-card px-5 py-6 text-sm leading-7 text-foreground/70">
+              Для этого города пока не заполнен прайс. Контент уже вынесен в систему управления,
+              поэтому его можно добавить без изменений в коде.
             </div>
+          ) : null}
+
+          {pricePage.sections.map((section, index) => (
+            <PriceSection
+              key={section.id}
+              section={section}
+              selectedIds={selectedIds}
+              onToggle={toggle}
+              sectionIndex={index}
+              adminEditMode={adminEditMode}
+              onEditSection={() => setDrawerState({ type: "section", sectionId: section.id })}
+              onEditItem={(itemId) => setDrawerState({ type: "item", sectionId: section.id, itemId })}
+            />
           ))}
-        </main>
-
-        <TrainingsSection city={city} />
-
-        {/* Footer */}
-        <footer
-          className="mt-12 md:mt-14 pt-8 px-4 md:px-5 animate-fade-in-up"
-          style={{ animationDelay: "600ms" }}
-        >
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-px flex-1 bg-border" />
-            <span className="text-[10px] tracking-[0.35em] uppercase text-muted-foreground">
-              {"Контакты"}
-            </span>
-            <div className="h-px flex-1 bg-border" />
-          </div>
-
-          <div className="flex flex-col items-center gap-4 text-center">
-            <a
-              href={`https://wa.me/${info.whatsapp}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[13px] text-foreground/70 hover:text-primary transition-colors duration-300 tracking-wide"
-            >
-              {info.whatsappDisplay}
-            </a>
-            <a
-              href={`https://instagram.com/${info.instagram}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[13px] text-foreground/70 hover:text-primary transition-colors duration-300 tracking-wide"
-            >
-              {"@"}
-              {info.instagram}
-            </a>
-          </div>
-        </footer>
+        </section>
       </div>
 
-      {/* Sticky CTA */}
-      {hasSelection && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center animate-slide-up">
-          <div className="w-full max-w-[620px] px-4 md:px-5 pb-5 md:pb-6 pt-7 md:pt-8 bg-gradient-to-t from-background via-background/95 to-transparent">
-            <a
-              href={whatsappUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="
-                flex items-center justify-center gap-3
-                w-full py-4 px-6 rounded-2xl
-                bg-primary text-primary-foreground
-                text-[14px] font-medium tracking-wide
-                transition-all duration-300
-                hover:shadow-lg hover:shadow-primary/20 hover:scale-[1.01]
-                active:scale-[0.99]
-              "
-            >
-              <MessageCircle className="w-5 h-5" strokeWidth={1.5} />
-              <span>{"Записаться"}</span>
-              {total > 0 && (
-                <span className="text-primary-foreground/60 ml-1">
-                  {total.toLocaleString("ru-RU")} {"\u20BD"}
-                </span>
-              )}
-            </a>
-          </div>
+      {hasSelection && !adminLoggedIn ? (
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center bg-gradient-to-t from-background via-background/95 to-transparent px-4 pb-5 pt-8 md:px-6 md:pb-6">
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex w-full max-w-[720px] items-center justify-center gap-3 rounded-[24px] bg-primary px-6 py-4.5 text-sm font-medium tracking-wide text-primary-foreground shadow-[0_18px_40px_rgba(107,23,40,0.22)] transition-transform duration-300 hover:scale-[1.01] active:scale-[0.99]"
+          >
+            <MessageCircle className="h-5 w-5" strokeWidth={1.8} />
+            <span>Записаться в WhatsApp</span>
+            {total > 0 ? (
+              <span className="text-primary-foreground/70">{total.toLocaleString("ru-RU")} ₽</span>
+            ) : null}
+          </a>
         </div>
-      )}
-    </div>
+      ) : null}
+
+      {adminEditMode ? (
+        <PriceAdminDrawer city={pricePage} state={effectiveDrawerState} onClose={() => setDrawerState(null)} />
+      ) : null}
+    </main>
   );
 }

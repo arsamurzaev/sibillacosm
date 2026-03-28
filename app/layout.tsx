@@ -1,3 +1,5 @@
+import { Toaster } from "@/components/ui/sonner";
+import { QueryProvider } from "@/components/providers/query-provider";
 import {
   siteDescription,
   siteHandle,
@@ -8,7 +10,6 @@ import {
 } from "@/lib/seo";
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Inter } from "next/font/google";
-import { cityInfo } from "./data";
 import "./globals.css";
 
 const cormorant = Cormorant_Garamond({
@@ -97,13 +98,22 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const contacts = [cityInfo.grozny, cityInfo.moscow].map((item) => ({
-    "@type": "ContactPoint",
-    telephone: `+${item.whatsapp}`,
-    contactType: "customer support",
-    areaServed: "RU",
-    availableLanguage: ["ru"],
-  }));
+  const contacts = [
+    {
+      "@type": "ContactPoint",
+      telephone: "+79389121101",
+      contactType: "customer support",
+      areaServed: "RU",
+      availableLanguage: ["ru"],
+    },
+    {
+      "@type": "ContactPoint",
+      telephone: "+79882251505",
+      contactType: "customer support",
+      areaServed: "RU",
+      availableLanguage: ["ru"],
+    },
+  ];
 
   const structuredData = {
     "@context": "https://schema.org",
@@ -136,11 +146,14 @@ export default function RootLayout({
       <body
         className={`${cormorant.variable} ${inter.variable} font-sans antialiased`}
       >
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-        />
-        {children}
+        <QueryProvider>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+          />
+          {children}
+          <Toaster />
+        </QueryProvider>
       </body>
     </html>
   );

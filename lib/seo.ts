@@ -5,10 +5,9 @@ const rawSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim() ?? defaultSiteUrl;
 export const siteUrl = rawSiteUrl.replace(/\/+$/, "");
 export const siteName = "SIBILLACOSM";
 export const siteHandle = "@sibillacosm";
-export const siteTitle =
-  "SIBILLACOSM — Контурная пластика и эстетическая косметология";
+export const siteTitle = "SIBILLACOSM — прайс эстетической косметологии и обучение";
 export const siteDescription =
-  "SIBILLACOSM: контурная пластика, увеличение губ, коррекция носа и лица, ботулинотерапия, биоревитализация и профессиональное обучение в Грозном и Москве.";
+  "SIBILLACOSM: прайс эстетической косметологии для Грозного и Москвы, отдельный раздел обучения, запись через WhatsApp и редактирование контента через админку.";
 
 export const siteKeywords = [
   "SIBILLACOSM",

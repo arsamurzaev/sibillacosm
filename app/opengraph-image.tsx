@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 import { siteDescription, siteName } from "@/lib/seo";
 
-export const alt = `${siteName} — контурная пластика и эстетическая косметология`;
+export const alt = `${siteName} — прайс эстетической косметологии и обучение`;
 export const size = {
   width: 1200,
   height: 630,
@@ -53,9 +53,9 @@ export default function OpenGraphImage() {
               fontWeight: 600,
             }}
           >
-            Контурная пластика
+            Прайс косметологии
             <br />
-            и эстетическая косметология
+            и отдельный раздел обучения
           </div>
           <div style={{ fontSize: 30, lineHeight: 1.35, color: "rgba(26,22,20,0.78)" }}>
             {siteDescription}

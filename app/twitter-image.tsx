@@ -40,7 +40,7 @@ export default function TwitterImage() {
         >
           SIBILLACOSM
           <br />
-          Контурная пластика и обучение
+          Прайс, процедуры и обучение
         </div>
         <div
           style={{
