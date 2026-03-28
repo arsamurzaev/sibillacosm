@@ -1,8 +1,26 @@
+import type { Metadata } from "next";
 import { requireAdminSession } from "@/lib/auth";
 import Link from "next/link";
 import { ExternalLink, GraduationCap, LayoutTemplate, MapPinned } from "lucide-react";
 import { AdminNavLink } from "../components/admin-nav-link";
 import { logoutAction } from "../actions";
+
+export const metadata: Metadata = {
+  title: {
+    default: "Админ-панель",
+    template: "%s | Админ-панель",
+  },
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
+};
 
 export default async function AdminProtectedLayout({
   children,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getAdminSession } from "@/lib/auth";
 import { loginAction } from "../actions";
@@ -5,6 +6,20 @@ import { loginAction } from "../actions";
 interface LoginPageProps {
   searchParams: Promise<{ error?: string }>;
 }
+
+export const metadata: Metadata = {
+  title: "Вход в админ-панель",
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
+};
 
 export default async function AdminLoginPage({ searchParams }: LoginPageProps) {
   const [params, adminSession] = await Promise.all([searchParams, getAdminSession()]);

@@ -1,14 +1,14 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import type { CityWithSections } from "@/lib/types";
 import { pricePageQueryKey } from "@/lib/query-keys";
+import type { CityWithSections } from "@/lib/types";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, MessageCircle, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AdminExitButton } from "./admin-exit-button";
-import { PriceSection } from "./price-section";
 import { PriceAdminDrawer, type PriceDrawerState } from "./price-admin-drawer";
+import { PriceSection } from "./price-section";
 import { PublicEditLink } from "./public-edit-link";
 
 function getPriceDrawerStorageKey(citySlug: string) {
@@ -19,7 +19,9 @@ function readStoredPriceDrawerState(citySlug: string): PriceDrawerState {
   if (typeof window === "undefined") return null;
 
   try {
-    const rawValue = window.sessionStorage.getItem(getPriceDrawerStorageKey(citySlug));
+    const rawValue = window.sessionStorage.getItem(
+      getPriceDrawerStorageKey(citySlug),
+    );
     if (!rawValue) return null;
 
     const parsed = JSON.parse(rawValue) as PriceDrawerState;
@@ -31,10 +33,7 @@ function readStoredPriceDrawerState(citySlug: string): PriceDrawerState {
       return parsed;
     }
 
-    if (
-      parsed.type === "section" &&
-      typeof parsed.sectionId === "string"
-    ) {
+    if (parsed.type === "section" && typeof parsed.sectionId === "string") {
       return parsed;
     }
 
@@ -52,7 +51,10 @@ function readStoredPriceDrawerState(citySlug: string): PriceDrawerState {
   return null;
 }
 
-function isValidPriceDrawerState(city: CityWithSections, state: PriceDrawerState) {
+function isValidPriceDrawerState(
+  city: CityWithSections,
+  state: PriceDrawerState,
+) {
   if (!state) return true;
   if (state.type === "city" || state.type === "addSection") return true;
 
@@ -82,7 +84,10 @@ async function fetchPricePage(citySlug: string) {
   return (await response.json()) as CityWithSections;
 }
 
-function buildWhatsAppMessage(selectedIds: Set<string>, city: CityWithSections): string {
+function buildWhatsAppMessage(
+  selectedIds: Set<string>,
+  city: CityWithSections,
+): string {
   const lines: string[] = [
     "Здравствуйте!",
     "",
@@ -99,7 +104,8 @@ function buildWhatsAppMessage(selectedIds: Set<string>, city: CityWithSections):
 
     for (const item of picked) {
       const secondary = item.secondaryLine ? ` (${item.secondaryLine})` : "";
-      const price = item.price > 0 ? `${item.price.toLocaleString("ru-RU")} ₽` : "уточнить";
+      const price =
+        item.price > 0 ? `${item.price.toLocaleString("ru-RU")} ₽` : "уточнить";
       lines.push(`- ${item.name}${secondary} - ${price}`);
     }
 
@@ -138,7 +144,8 @@ export function PriceList({
     adminEditMode ? readStoredPriceDrawerState(city.slug) : null,
   );
   const effectiveDrawerState = useMemo(
-    () => (isValidPriceDrawerState(pricePage, drawerState) ? drawerState : null),
+    () =>
+      isValidPriceDrawerState(pricePage, drawerState) ? drawerState : null,
     [pricePage, drawerState],
   );
 
@@ -148,7 +155,10 @@ export function PriceList({
     const storageKey = getPriceDrawerStorageKey(city.slug);
 
     if (effectiveDrawerState) {
-      window.sessionStorage.setItem(storageKey, JSON.stringify(effectiveDrawerState));
+      window.sessionStorage.setItem(
+        storageKey,
+        JSON.stringify(effectiveDrawerState),
+      );
       return;
     }
 
@@ -167,7 +177,10 @@ export function PriceList({
     });
   };
 
-  const total = useMemo(() => calcTotal(selectedIds, pricePage), [pricePage, selectedIds]);
+  const total = useMemo(
+    () => calcTotal(selectedIds, pricePage),
+    [pricePage, selectedIds],
+  );
   const hasSelection = selectedIds.size > 0;
 
   const whatsappUrl = useMemo(() => {
@@ -215,8 +228,9 @@ export function PriceList({
             Прайс
           </h1>
           <p className="mt-5 max-w-[520px] text-sm leading-7 text-foreground/72 md:text-[15px]">
-            Выберите интересующие процедуры, чтобы сразу отправить заявку в WhatsApp.
-            Дополнительные материалы по процедурам открываются прямо внутри карточек.
+            Выберите интересующие процедуры, чтобы сразу отправить заявку в
+            WhatsApp. Дополнительные материалы по процедурам открываются прямо
+            внутри карточек.
           </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -248,8 +262,7 @@ export function PriceList({
         <section className="mt-8 flex flex-col gap-5">
           {pricePage.sections.length === 0 ? (
             <div className="rounded-[28px] border border-border bg-card px-5 py-6 text-sm leading-7 text-foreground/70">
-              Для этого города пока не заполнен прайс. Контент уже вынесен в систему управления,
-              поэтому его можно добавить без изменений в коде.
+              Для этого города пока не заполнен прайс.
             </div>
           ) : null}
 
@@ -261,8 +274,12 @@ export function PriceList({
               onToggle={toggle}
               sectionIndex={index}
               adminEditMode={adminEditMode}
-              onEditSection={() => setDrawerState({ type: "section", sectionId: section.id })}
-              onEditItem={(itemId) => setDrawerState({ type: "item", sectionId: section.id, itemId })}
+              onEditSection={() =>
+                setDrawerState({ type: "section", sectionId: section.id })
+              }
+              onEditItem={(itemId) =>
+                setDrawerState({ type: "item", sectionId: section.id, itemId })
+              }
             />
           ))}
         </section>
@@ -279,14 +296,20 @@ export function PriceList({
             <MessageCircle className="h-5 w-5" strokeWidth={1.8} />
             <span>Записаться в WhatsApp</span>
             {total > 0 ? (
-              <span className="text-primary-foreground/70">{total.toLocaleString("ru-RU")} ₽</span>
+              <span className="text-primary-foreground/70">
+                {total.toLocaleString("ru-RU")} ₽
+              </span>
             ) : null}
           </a>
         </div>
       ) : null}
 
       {adminEditMode ? (
-        <PriceAdminDrawer city={pricePage} state={effectiveDrawerState} onClose={() => setDrawerState(null)} />
+        <PriceAdminDrawer
+          city={pricePage}
+          state={effectiveDrawerState}
+          onClose={() => setDrawerState(null)}
+        />
       ) : null}
     </main>
   );

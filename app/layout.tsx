@@ -1,9 +1,12 @@
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/components/providers/query-provider";
 import {
+  absoluteUrl,
   siteDescription,
   siteHandle,
   siteKeywords,
+  siteLanguage,
+  siteLocale,
   siteName,
   siteTitle,
   siteUrl,
@@ -40,19 +43,19 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
     languages: {
-      "ru-RU": "/",
+      [siteLanguage]: "/",
     },
   },
   openGraph: {
     type: "website",
-    locale: "ru_RU",
+    locale: siteLocale,
     url: "/",
     siteName,
     title: siteTitle,
     description: siteDescription,
     images: [
       {
-        url: "/opengraph-image",
+        url: absoluteUrl("/opengraph-image"),
         width: 1200,
         height: 630,
         alt: `${siteName} — эстетическая косметология`,
@@ -64,12 +67,34 @@ export const metadata: Metadata = {
     title: siteTitle,
     description: siteDescription,
     creator: siteHandle,
-    images: ["/twitter-image"],
+    images: [absoluteUrl("/twitter-image")],
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      {
+        url: "/icon0.svg",
+        type: "image/svg+xml",
+        sizes: "any",
+      },
+      {
+        url: "/icon1.png",
+        type: "image/png",
+        sizes: "96x96",
+      },
+      {
+        url: "/favicon.ico",
+        type: "image/x-icon",
+        sizes: "48x48",
+      },
+    ],
     shortcut: "/favicon.ico",
-    apple: "/favicon.ico",
+    apple: [
+      {
+        url: "/apple-icon.png",
+        type: "image/png",
+        sizes: "180x180",
+      },
+    ],
   },
   robots: {
     index: true,
