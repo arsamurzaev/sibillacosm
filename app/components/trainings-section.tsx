@@ -268,6 +268,7 @@ export function TrainingsSection({
               <Accordion
                 key={training.id}
                 type="single"
+                defaultValue={training.id}
                 collapsible
                 className="animate-fade-in-up"
                 style={{ animationDelay: `${index * 80}ms` }}
@@ -400,7 +401,9 @@ export function TrainingsSection({
                               <TrainingPlanBlock
                                 key={block.id}
                                 block={block}
-                                isLast={blockIndex === training.blocks.length - 1}
+                                isLast={
+                                  blockIndex === training.blocks.length - 1
+                                }
                               />
                             ))}
                           </div>
