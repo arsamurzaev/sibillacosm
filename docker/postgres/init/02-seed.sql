@@ -27,7 +27,7 @@ cross join (
     ('biorevit', 'Биоревитализация / коллагенотерапия', '', '', 10),
     ('eyes', 'Вокруг глаз', '', '', 11)
 ) as s(slug, title, subtitle, guarantee, sort_order)
-where c.slug = 'grozny'
+where c.slug in ('grozny', 'moscow')
 on conflict (city_id, slug) do update set
   title = excluded.title,
   subtitle = excluded.subtitle,
@@ -38,7 +38,7 @@ on conflict (city_id, slug) do update set
 insert into price_items (section_id, slug, name, secondary_line, note, price, old_price, sort_order, is_published)
 select ps.id, i.slug, i.name, i.secondary_line, i.note, i.price, i.old_price, i.sort_order, true
 from price_sections ps
-join cities c on c.id = ps.city_id and c.slug = 'grozny'
+join cities c on c.id = ps.city_id and c.slug in ('grozny', 'moscow')
 join (
   values
     ('lips', 'dermalax-deep-05', 'Dermalax Deep', '0,5 мл', 'Корея', 9000, null, 1),
